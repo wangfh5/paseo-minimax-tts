@@ -6,6 +6,22 @@ A small [Paseo](https://paseo.sh) plugin that reads the final reply of each agen
 
 Unofficial: this project is not affiliated with MiniMax or Paseo.
 
+## In action
+
+**Listen right below the reply.** Press Play to read the final answer aloud, pause when you need to, and drag the progress bar to skip ahead. Shown here paused at 0:07.
+
+![Inline player beneath a completed reply, with playback progress and an Auto control](docs/images/inline-player.png)
+
+**Choose automatic speech for each chat.** Open **Auto** to choose manual playback (`Off`), prepare audio in advance (`Synthesize`), or play new replies automatically (`Play`).
+
+![The expanded Auto control with Off, Synthesize, and Play options for this chat](docs/images/chat-auto.png)
+
+**Control playback from any page.** The sidebar shows the current chat, with resume and stop controls. Click its title to return to that chat.
+
+<img src="docs/images/now-playing.png" alt="Sidebar now-playing control, paused in the Hello chat, with resume and stop buttons" width="320">
+
+Screenshots captured from the Paseo web app on macOS, cropped to the plugin controls.
+
 ## Features
 
 - **Global now-playing control.** While audio is loaded and not finished, a row appears at the bottom of the sidebar with the chat's title and buttons to pause or resume and to stop. Clicking the row opens the chat that owns the audio so you can use its progress bar (it opens the chat, it cannot scroll to the exact reply). Stop ends the current audio and discards any queued auto-play replies, so you can always silence playback from any page. Archiving or deleting a chat also stops its audio and drops its queued replies.
@@ -48,6 +64,10 @@ After editing the source, run `paseo plugin reload paseo-minimax-tts`. There is 
 3. Finish a new agent turn and press **Play** in the player row under the reply.
 4. If the browser blocks autoplay, press **Play** again.
 5. For automatic speech, choose `Synthesize` or `Play` under **Automatic speech** and save. To change it for one chat only, use **Auto** in that chat's player row. A chat setting applies to replies that finish afterwards, and chats you have not set follow the global default. Region, model and voice are under **Advanced**.
+
+The settings page brings together the API key, global automatic speech mode, region, model, voice, and audio cache. **Advanced** is expanded below; the saved key is never displayed.
+
+<img src="docs/images/settings.png" alt="MiniMax speech settings with automatic speech modes, China and Global regions, model, voice, and audio cache controls" width="640">
 
 Defaults: model `speech-2.8-hd`, voice `Chinese (Mandarin)_Warm_Girl`, region `cn`. You provide the key. Keys for China subscriptions and pay-as-you-go accounts have different quotas, so use the key that matches your account and region.
 
