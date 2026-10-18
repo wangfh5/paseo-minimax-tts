@@ -1,20 +1,40 @@
 {
   "name": "paseo-minimax-tts",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
+  "description": "Paseo plugin that reads the final reply of each agent turn aloud with MiniMax text-to-speech",
+  "license": "MIT",
+  "author": "Fohong Wang (https://github.com/wangfh5)",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wangfh5/paseo-minimax-tts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/wangfh5/paseo-minimax-tts/issues"
+  },
+  "homepage": "https://github.com/wangfh5/paseo-minimax-tts#readme",
+  "keywords": [
+    "paseo",
+    "paseo-plugin",
+    "tts",
+    "text-to-speech",
+    "minimax"
+  ],
   "files": [
     "paseo-plugin.json",
     "OVERVIEW.md",
-    "index.client.ts",
     "index.client.tsx",
     "index.server.ts",
-    "index.server.tsx",
     "client/",
     "server/",
     "shared/"
   ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
-    "typecheck": "tsc --noEmit", "test": "tsx --test server/*.test.ts"
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test server/*.test.ts"
   },
   "devDependencies": {
     "@getpaseo/plugin": "0.11.4",

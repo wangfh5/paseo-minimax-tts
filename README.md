@@ -1,70 +1,90 @@
 # Paseo MiniMax TTS
 
-一个极简 Paseo 插件：将 Agent 一轮结束后的最后一条助手回复交给 MiniMax 合成，在聊天页每条最终回复下方的内嵌播放器中播放。当前是可用原型，不是内置 Voice Mode 的替代品。
+[简体中文](README.zh-CN.md)
 
-## 功能
+A small [Paseo](https://paseo.sh) plugin that reads the final reply of each agent turn aloud with [MiniMax](https://www.minimax.io) text-to-speech. A compact player row appears under every completed reply in the chat. This is an early version and not a replacement for Paseo's built-in voice mode.
 
-- 聊天页内嵌播放器：每轮结束后在最终回复下方出现一行，可合成、播放、暂停/继续、拖动进度条定位、取消合成。
-- 设置页配置 API key、国内/国际区域、模型与音色。
-- 自动语音三档，默认关闭：Off 仅手动；Synthesize 回复结束时由 daemon 立即合成并缓存，点 Play 即播；Play 在合成后自动播放。可设全局默认，也可在任一聊天的播放器行用 **Auto** 单独覆盖。播放器行会标出状态：Read aloud（点播放时才合成）、Synthesizing…（正在合成）、Ready（已缓存，点播放即播）、Expired（回复已不在内存中，无法再播）。
-- 仅在成功完成的轮次中选择最后一条助手消息，不拼接工具调用、思考过程或中间助手消息。
+Unofficial: this project is not affiliated with MiniMax or Paseo.
 
-## 要求与安装
+## Features
 
-开发与 daemon 验证版本为 Paseo 0.11.4。桌面/web 使用浏览器音频实现；网页端已实际验证。原生 iOS/Android 播放暂不支持。
+- **Inline player in the chat.** After each turn, a row under the final reply lets you synthesize, play, pause, drag the progress bar to seek, and cancel synthesis.
+- **Settings page** for the API key, China or global region, model and voice.
+- **Automatic speech, three modes, off by default.** `Off` speaks only when you press Play. `Synthesize` makes the daemon generate speech as soon as a reply completes and cache it, so Play is instant. `Play` also plays it automatically. Set a global default, or override it for a single chat with the **Auto** control in that chat's player row.
+- **Row status:** `Read aloud` (synthesized when you press Play), `Synthesizing…`, `Ready` (cached, plays instantly) or `Expired` (the reply is no longer in memory and cannot be played again).
+- **Any length.** Long replies are split at paragraph and sentence boundaries, synthesized part by part and joined into one file. Finished parts are cached, so a retry after a failure only pays for the remaining parts.
+- **Disk cache with a size limit** that you set and can clear from the settings page.
+- Only the last assistant message after a successful turn is read. Tool calls, reasoning and intermediate assistant messages are never joined into it.
 
-插件是可信、非沙箱代码。先审查源码，并在目标 daemon 中允许插件，然后：
+## Requirements and installation
+
+- Paseo 0.11.4 or newer. It was developed and verified on 0.11.4, in the web app.
+- Desktop and web use browser audio. Native iOS and Android playback is not supported yet.
+- A MiniMax API key. Synthesis is billed to your MiniMax account.
+
+Plugins are trusted, unsandboxed code. Review the source and make sure plugins are enabled on your daemon, then:
+
+```sh
+paseo plugin install github:wangfh5/paseo-minimax-tts
+paseo plugin ls
+```
+
+Update with `paseo plugin update paseo-minimax-tts`. To work on a local checkout instead:
 
 ```sh
 npm ci
 npm run typecheck
 npm test
 paseo plugin install /absolute/path/to/paseo-minimax-tts
-paseo plugin ls
 ```
 
-源码更新后运行 `paseo plugin reload paseo-minimax-tts`，不需要重启 daemon。
+After editing the source, run `paseo plugin reload paseo-minimax-tts`. There is no need to restart the daemon.
 
-## 使用
+## Usage
 
-1. 在 Paseo 的 **Settings → Plugins** 中点击 paseo-minimax-tts 右侧的 **…** 菜单，选择 **Settings** 打开设置页，也可以在命令面板（⌘K）搜索 **MiniMax speech settings**。
-2. 在设置页填写密钥，选择与密钥匹配的区域，点击 **Save**。
-3. 完成一轮新的 Agent 对话，在聊天页该回复下方的播放器行点击 **Play**。
-4. 浏览器若阻止自动播放，点击 **Play**。
-5. 需要自动朗读时，在设置页把 **Automatic speech** 选为 Synthesize 或 Play 并保存；区域、模型、音色收在 **Advanced** 中。只想对某个聊天开启或关闭，点该聊天播放器行右侧的 **Auto**，选 Off / Synthesize / Play，仅对之后结束的回复生效；未单独设置的聊天沿用全局默认。
+1. Open **Settings → Plugins** in Paseo, click the **…** menu of paseo-minimax-tts and choose **Settings**. You can also search **MiniMax speech settings** in the command palette (⌘K).
+2. Enter your API key, pick the region that matches the key, and click **Save**.
+3. Finish a new agent turn and press **Play** in the player row under the reply.
+4. If the browser blocks autoplay, press **Play** again.
+5. For automatic speech, choose `Synthesize` or `Play` under **Automatic speech** and save. To change it for one chat only, use **Auto** in that chat's player row. A chat setting applies to replies that finish afterwards, and chats you have not set follow the global default. Region, model and voice are under **Advanced**.
 
-默认模型为 `speech-2.8-hd`，音色为 `Chinese (Mandarin)_Warm_Girl`，区域为 `cn`。密钥由用户提供；不会自动读取 Hermes 凭据。国内订阅密钥与按量付费密钥的额度不同，请使用与账户及接口匹配的密钥。
+Defaults: model `speech-2.8-hd`, voice `Chinese (Mandarin)_Warm_Girl`, region `cn`. You provide the key. Keys for China subscriptions and pay-as-you-go accounts have different quotas, so use the key that matches your account and region.
 
-## 隐私与存储
+## Privacy and storage
 
-- MiniMax 请求只由 daemon 发起，选中的回复文本会发送到对应区域的 MiniMax API，消耗该账户额度。
-- 密钥与设置存于 daemon 用户的 `~/.paseo-minimax-tts/settings.json`，目录权限 `0700`、文件权限 `0600`；这是受文件权限保护的明文存储，不是加密保险库。
-- 设置读取 RPC 只返回是否已有密钥，不返回密钥内容。输入框留空会保留旧密钥，也可删除密钥。
-- 密钥、设置、生成的音频和 node_modules 不应提交 Git。
-- 最近 20 条回复文本仅在 daemon 内存中保存，重载/重启即清空。
-- 合成出的音频缓存为磁盘文件，位于 `~/.paseo-minimax-tts/audio/`（目录 `0700`、文件 `0600`，文件名为哈希，同样是明文 MP3，不加密），重载、重启后仍可直接播放而不再计费。总量上限默认 512 MB，可在设置页的 **Audio cache** 修改，设置页也显示当前占用并可手动清空；超出上限后淘汰最久未使用的文件，调低上限会立即生效；上限是硬限制，单条音频本身超过上限时不会被缓存（之后再播要重新合成并计费）；缓存键包含模型和音色，改了音色就会重新合成。不再需要时可直接删除该目录。回复文本已不在内存、音频也被淘汰时，无法再次合成。
+- Only the daemon talks to MiniMax. The text of the selected reply is sent to the API of the chosen region and uses your account quota.
+- The key and settings are stored in `~/.paseo-minimax-tts/settings.json` of the daemon user (directory `0700`, file `0600`). This is plain text protected by file permissions, not an encrypted vault. On Windows these permissions are not enforced.
+- The settings RPC only reports whether a key exists and never returns it. Leaving the key field empty keeps the old key, and you can delete it.
+- The text of the latest 20 replies is kept only in daemon memory and is cleared on reload or restart.
+- Generated audio is cached as plain MP3 files in `~/.paseo-minimax-tts/audio/` (directory `0700`, files `0600`, named by hash). A reply you have already synthesized plays again without being billed again, also after a plugin reload because its player row stays in the chat. A daemon restart clears the player rows and the reply list, so older cached audio can no longer be reached from the chat and simply ages out of the cache. The total size limit defaults to 512 MB and is set under **Audio cache** in the settings page, which also shows current usage and can clear the cache. The least recently used files are removed first, and lowering the limit takes effect immediately. The limit is a hard cap, so a single recording larger than the limit is not cached and must be synthesized again to replay. The cache key includes the model and voice, so changing the voice generates new audio. Delete the directory if you no longer want it. If a reply's text is gone from memory and its audio has been evicted, it cannot be synthesized again.
+- Do not commit keys, settings, generated audio or `node_modules`.
 
-## 当前限制
+## Limitations
 
-- 播放器行是独立的插件时间线行，位于回复下方，不在消息气泡内；它存放在 daemon 的内存时间线中，daemon 重启后消失。全局只有一个音频，同时只能播放一条。
-- Paseo SDK 没有统一 final/channel 标记；采取“成功结束且最后的有效消息是助手文本”的保守规则。分多条发送的最终答案只读最后一条，不能区分语义上类似最终答案的结束评论。
-- 自动语音的全局默认是 daemon 共享设置，不是按设备设置；聊天级覆盖按 Agent 保存在同一个设置文件中，可在该聊天的播放器行修改，但要等该聊天出现第一条回复后才有入口。Synthesize 与 Play 都会在 daemon 里自动合成并计费，即使没有任何客户端在听；缓存只保留最近 3 条。多个客户端可能同时发声。
-- 自动播放在 Paseo App 打开且插件已加载时运行。新的自动播放回复按完成顺序排队，等当前音频播完再依次播放；暂停中的音频会让队列等待，出错的音频不会。初始/重连快照不补播。队列只在客户端内存中，没有跳过或清空按钮。
-- 浏览器自动播放策略、后台挂起或关闭 App 可能阻止播放。
-- 合成不限长度：超过 2,000 字符的回复会按段落、句子边界切成多段依次请求 MiniMax（它对单次请求的上限是不到 10,000 字符），再把各段 MP3 按顺序拼成一个文件。费用随字数增加，自动模式不会再因为太长而拒绝。每次请求超时 60 秒，可随时取消。已合成完的分段会先单独缓存，中途失败后重试只合成剩下的部分，全部完成后再合并存为整条并删除分段。
-- 依赖审计仍有上游告警；尚未进行破坏性依赖升级或完整安全审计。
+- The player row is a separate plugin timeline row under the reply, not part of the message bubble. It lives in the daemon's in-memory timeline and disappears when the daemon restarts. There is a single shared audio, so only one reply plays at a time.
+- The Paseo SDK has no final or channel marker. The plugin uses a conservative rule: the turn succeeded and the last meaningful message is assistant text. If a final answer is sent as several messages only the last one is read, and a closing comment cannot be told apart from a final answer.
+- The global automatic speech mode is a daemon-wide setting, not per device. Per-chat overrides are stored per agent in the same settings file, and the control appears once a chat has its first reply. `Synthesize` and `Play` generate and bill speech in the daemon even if no client is listening. Several clients may play at the same time.
+- Automatic playback runs while the Paseo app is open with the plugin loaded. New auto-play replies are queued in the order they finish and play one after another. A paused reply holds the queue, a failed one does not, and the initial snapshot after a reconnect is never played. The queue lives in client memory and has no skip or clear control.
+- Browser autoplay policy, background suspension or closing the app can prevent playback.
+- There is no length limit. Replies over 2,000 characters are split into several MiniMax requests (MiniMax accepts under 10,000 characters per request), so cost grows with length and automatic modes will not refuse a very long reply. Each request times out after 60 seconds and synthesis can be canceled at any time.
+- Tested only on Paseo 0.11.4 in the web app, on macOS, against the China region. Requests to the global region are covered by mocked tests only.
+- `npm audit` reports upstream warnings. They come from the development toolchain of `react-native`; the plugin ships no runtime dependencies.
 
-## 开发与验证
+## Development
 
 ```sh
 npm run typecheck
 npm test
-# 本机只读 RPC 检查，无密钥回显，不合成音频
+# Read-only RPC check against a local daemon: no key is printed and no audio is synthesized
 npx tsx server/rpc-check.ts ws://127.0.0.1:6767/ws
-# 明确触发付费合成：需要已经完成一轮新回复
+# Triggers paid synthesis of the latest reply, so finish a new agent turn first
 npx tsx server/rpc-check.ts ws://127.0.0.1:6767/ws --synthesize-latest
 ```
 
-测试覆盖最终消息选择、存储权限、模拟 MiniMax 响应、输入限制、真实媒体 currentTime 接线以及原生端隔离。上述 RPC 合成命令本身不播放声音。做 UI 播放测试前应提醒使用者，避免其他已连接设备突然出声。
+The tests cover final message selection, settings storage and migration, mocked MiniMax requests, text splitting and MP3 joining, the disk cache (limits, eviction, concurrency), the auto-play queue, player state and seeking, and native isolation. The synthesis command above does not play any sound, but warn people before you test playback so other connected devices do not start speaking unexpectedly.
 
-目录：`client/` 为 UI 与播放器，`server/` 为凭据存储、筛选及 MiniMax 请求，`shared/` 为 RPC 契约。`OVERVIEW.md` 为 Paseo 内插件说明。
+Layout: `client/` is the UI and player, `server/` holds credential storage, reply selection, the cache and MiniMax requests, and `shared/` has the RPC contracts. `OVERVIEW.md` is the plugin page shown inside Paseo.
+
+## License
+
+[MIT](LICENSE)
