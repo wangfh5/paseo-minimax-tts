@@ -1,11 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp,stat,rm,writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { mkdtemp,stat,rm,writeFile,readdir,utimes } from "node:fs/promises";
+import { join,dirname } from "node:path";
 import { tmpdir } from "node:os";
 import { finalReply } from "./final";
 import { loadSettings,persistSettings } from "./store";
-import { renderSpeech } from "./minimax";
+import { renderSpeech,splitText,mp3Frames } from "./minimax";
+import { audioCache } from "./cache";
 const user={type:"user_message" as const,text:"question"};
 const assistant=(text:string)=>({type:"assistant_message" as const,text});
 test("select only last response, never reasoning or intermediate updates",()=>{assert.equal(finalReply([user,assistant("Working"),{type:"reasoning",text:"private"},assistant("Final")],"completed"),"Final");});
@@ -14,5 +15,36 @@ test("tool-ending or reasoning-ending turn is not treated as final",()=>{assert.
 test("plugin rows cannot replace final response",()=>assert.equal(finalReply([user,assistant("done"),{type:"plugin",id:"x",pluginId:"test",kind:"a",version:1,data:{}}],"completed"),"done"));
 test("secure storage defaults and permissions",async()=>{const dir=await mkdtemp(join(tmpdir(),"minimax-test-"));try{const settings=await loadSettings(dir);assert.equal(settings.auto,"off");assert.deepEqual(settings.chats,{});assert.equal(settings.region,"cn");await persistSettings({...settings,apiKey:"FAKE-TEST-ONLY"},dir);assert.equal((await stat(join(dir,"settings.json"))).mode&0o777,0o600);assert.equal((await stat(dir)).mode&0o777,0o700);assert.equal((await loadSettings(dir)).apiKey,"FAKE-TEST-ONLY");}finally{await rm(dir,{recursive:true});}});
 test("mock MiniMax validates request and converts hex",async()=>{const settings={apiKey:"FAKE",region:"cn",model:"speech-2.8-hd",voice:"Chinese (Mandarin)_Warm_Girl"};const request:typeof fetch=async(url,init)=>{assert.equal(url,"https://api.minimaxi.com/v1/t2a_v2");const body=JSON.parse(String(init?.body));assert.equal(body.stream,false);assert.equal(body.voice_setting.voice_id,settings.voice);return new Response(JSON.stringify({base_resp:{status_code:0},data:{audio:"494433"}}));};const result=await renderSpeech("Hello",settings,new AbortController().signal,request);assert.equal(result.base64,"SUQz");});
-test("length/key guards make zero API calls",async()=>{const request:typeof fetch=async()=>{throw new Error("UNEXPECTED NETWORK");};const s={apiKey:"FAKE",region:"global",model:"m",voice:"v"};await assert.rejects(renderSpeech("x".repeat(8001),s,new AbortController().signal,request),/8000/);await assert.rejects(renderSpeech("hi",{...s,apiKey:""},new AbortController().signal,request),/API key/);});
+test("key and empty-text guards make zero API calls",async()=>{const request:typeof fetch=async()=>{throw new Error("UNEXPECTED NETWORK");};const s={apiKey:"FAKE",region:"global",model:"m",voice:"v"};await assert.rejects(renderSpeech("  \n ",s,new AbortController().signal,request),/no text/);await assert.rejects(renderSpeech("hi",{...s,apiKey:""},new AbortController().signal,request),/API key/);});
 test("legacy alwaysOn setting migrates and per-chat modes persist",async()=>{const dir=await mkdtemp(join(tmpdir(),"minimax-test-"));try{await writeFile(join(dir,"settings.json"),JSON.stringify({model:"m",voice:"v",region:"global",alwaysOn:true,apiKey:"FAKE"}));const legacy=await loadSettings(dir);assert.equal(legacy.auto,"play");assert.equal(legacy.region,"global");await persistSettings({...legacy,chats:{a:"synthesize"}},dir);const next=await loadSettings(dir);assert.equal(next.auto,"play");assert.deepEqual(next.chats,{a:"synthesize"});await writeFile(join(dir,"settings.json"),JSON.stringify({...next,chats:{a:"bogus"}}));assert.deepEqual((await loadSettings(dir)).chats,{});}finally{await rm(dir,{recursive:true,force:true});}});
+test("audio cache round-trips, stays private, and evicts least recently used files over the limit",async()=>{const dir=join(await mkdtemp(join(tmpdir(),"minimax-test-")),"audio");try{const cache=audioCache(dir,25);const clip=(n:number)=>Buffer.alloc(10,n).toString("base64");
+ assert.equal(await cache.has("a"),false);assert.equal(await cache.get("a"),null);
+ await cache.put("a",clip(1));assert.equal(await cache.get("a"),clip(1));assert.equal((await stat(dir)).mode&0o777,0o700);const [name]=await readdir(dir);assert.equal((await stat(join(dir,name))).mode&0o777,0o600);
+ await cache.put("b",clip(2));await utimes(join(dir,name),new Date(1000),new Date(1000));await cache.put("c",clip(3));
+ assert.equal(await cache.has("a"),false,"oldest file is evicted once total exceeds the limit");assert.equal(await cache.has("b"),true);assert.equal(await cache.has("c"),true);
+ await assert.doesNotReject(cache.put("../../escape",clip(4)));assert.equal((await readdir(dir)).every(x=>/^[0-9a-f]{64}\.mp3$/.test(x)),true);
+}finally{await rm(dirname(dir),{recursive:true,force:true});}});
+test("splitText keeps short text whole and splits long text at natural boundaries without losing content",()=>{
+ assert.deepEqual(splitText("Hello there."),["Hello there."]);
+ const sentence="这是一句比较长的中文句子，用来测试按句切分的行为。";const paragraph=sentence.repeat(3);const text=Array.from({length:12},()=>paragraph).join("\n\n");
+ const parts=splitText(text,200);assert.ok(parts.length>1);assert.ok(parts.every(x=>x.length>0&&x.length<=200));assert.equal(parts.join("").replace(/\s/g,""),text.replace(/\s/g,""));
+ assert.ok(parts.slice(0,-1).every(x=>/[。！？；]$/.test(x)),"cuts land after sentence ends");
+ const blob="x".repeat(5000);assert.deepEqual(splitText(blob,2000).map(x=>x.length),[2000,2000,1000]);
+ const emoji="😀".repeat(300);assert.equal(splitText(emoji,101).join(""),emoji);
+});
+test("long text is synthesized in sequential parts and joined in order",async()=>{
+ const sent:string[]=[];const request:typeof fetch=async(_url,init)=>{const {text}=JSON.parse(String(init?.body));sent.push(text);return new Response(JSON.stringify({base_resp:{status_code:0},data:{audio:Buffer.from(`[${sent.length}]`).toString("hex")}}));};
+ const text=("段落内容。".repeat(300)+"\n\n").repeat(10);const result=await renderSpeech(text,{apiKey:"FAKE",region:"cn",model:"m",voice:"v"},new AbortController().signal,request);
+ assert.ok(sent.length>=2&&sent.every(x=>x.length<=2000),"each request stays under the per-request size");
+ assert.equal(Buffer.from(result.base64,"base64").toString(),Array.from({length:sent.length},(_,i)=>`[${i+1}]`).join(""));
+ const canceled=new AbortController();canceled.abort();const before=sent.length;await assert.rejects(renderSpeech("hello",{apiKey:"FAKE",region:"cn",model:"m",voice:"v"},canceled.signal,request),/canceled/);assert.equal(sent.length,before,"no request after cancel");
+});
+test("mp3Frames drops ID3 tags and the Xing/Info frame so parts can be joined",()=>{
+ const frame=(fill:number,tag="")=>{const f=Buffer.alloc(576,fill);Buffer.from([0xff,0xfb,0x98,0xc4]).copy(f);if(tag)f.write(tag,21,"latin1");return f;};
+ const id3=Buffer.concat([Buffer.from([0x49,0x44,0x33,4,0,0,0,0,0,20]),Buffer.alloc(20,7)]);
+ const body=Buffer.concat([frame(1),frame(2)]);
+ const wrapped=Buffer.concat([id3,frame(0,"Info"),body,Buffer.concat([Buffer.from("TAG"),Buffer.alloc(125)])]);
+ assert.deepEqual(mp3Frames(wrapped),body);
+ assert.deepEqual(mp3Frames(body),body,"already bare frames stay unchanged");
+ assert.equal(mp3Frames(Buffer.from("ID3")).length,0);
+});
