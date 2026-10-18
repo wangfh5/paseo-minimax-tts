@@ -30,6 +30,13 @@ test("audio cache reports usage, trims to a lowered limit, removes entries and c
  await cache.remove("never-stored");await cache.put("d",clip,1000);await cache.remove("d");assert.equal(await cache.has("d"),false);
  await cache.put("e",clip,1000);assert.deepEqual(await cache.clear(),{files:0,bytes:0});
 }finally{await rm(dirname(dir),{recursive:true,force:true});}});
+test("audio cache never exceeds its limit, survives concurrent writes to one key, and ignores vanished files",async()=>{const dir=join(await mkdtemp(join(tmpdir(),"minimax-test-")),"audio");try{const cache=audioCache(dir);const clip=(n:number,size=10)=>Buffer.alloc(size,n).toString("base64");
+ await cache.put("big",clip(1,20),10);assert.equal(await cache.has("big"),false,"a file larger than the limit is not kept");assert.deepEqual(await cache.stats(),{files:0,bytes:0});
+ await cache.put("old",clip(4),10);const future=new Date(Date.now()+3600_000);await utimes(join(dir,(await readdir(dir))[0]),future,future);await cache.put("new",clip(5),10);
+ assert.deepEqual(await cache.stats(),{files:1,bytes:10},"a newer-stamped file cannot push the total over the limit");assert.equal(await cache.has("new"),true);assert.equal(await cache.has("old"),false);await cache.clear();
+ await assert.doesNotReject(Promise.all(Array.from({length:8},(_,i)=>cache.put("same",clip(2),100))));assert.equal(await cache.get("same"),clip(2));assert.deepEqual(await cache.stats(),{files:1,bytes:10});assert.equal((await readdir(dir)).some(x=>x.endsWith(".tmp")),false);
+ await assert.doesNotReject(Promise.all([cache.clear(),cache.stats(),cache.put("x",clip(3),100),cache.trim(5)]));
+}finally{await rm(dirname(dir),{recursive:true,force:true});}});
 test("a retry resumes from the parts already synthesized instead of paying for them again",async()=>{
  const settings={apiKey:"FAKE",region:"cn",model:"m",voice:"v"};const text=["第一段内容。".repeat(300),"第二段内容。".repeat(300),"第三段内容。".repeat(300)].join("\n\n");
  const parts=splitText(text);assert.ok(parts.length>=3);
