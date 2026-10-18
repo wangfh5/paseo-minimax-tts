@@ -16,3 +16,7 @@ export function Progress({theme,audio}:{theme:Theme;audio:ReturnType<typeof play
  const [width,setWidth]=useState(1);
  return <View accessibilityRole="adjustable" accessibilityLabel="Audio progress; drag to seek" accessibilityValue={{min:0,max:Math.round(audio.duration),now:Math.round(audio.position)}} onLayout={e=>setWidth(e.nativeEvent.layout.width)} onStartShouldSetResponder={()=>true} onMoveShouldSetResponder={()=>true} onResponderGrant={e=>player.seek(e.nativeEvent.locationX/width)} onResponderMove={e=>player.seek(e.nativeEvent.locationX/width)} style={{flex:1,height:28,justifyContent:"center"}}><View pointerEvents="none" style={{height:6,borderRadius:3,backgroundColor:theme.colors.surface2,overflow:"hidden"}}><View style={{height:6,width:`${audio.duration?100*audio.position/audio.duration:0}%`,backgroundColor:theme.colors.accent}}/></View></View>;
 }
+export function Segmented<T extends string>({theme,value,options,onChange}:{theme:Theme;value:T;options:readonly {label:string;value:T}[];onChange:(value:T)=>void}){
+ const c=theme.colors;
+ return <View style={{flexDirection:"row",backgroundColor:c.surface2,borderRadius:8,padding:2}}>{options.map(option=><Pressable key={option.value} accessibilityRole="button" accessibilityState={{selected:value===option.value}} onPress={()=>onChange(option.value)} style={{flex:1,alignItems:"center",padding:6,borderRadius:6,backgroundColor:value===option.value?c.surface0:"transparent"}}><Text style={{color:c.foreground,fontSize:13}}>{option.label}</Text></Pressable>)}</View>;
+}

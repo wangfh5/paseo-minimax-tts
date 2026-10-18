@@ -1,12 +1,21 @@
 import { defineRpc } from "@getpaseo/plugin";
 import { z } from "zod";
-export const settingsSchema = z.object({ model:z.string().min(1).max(100), voice:z.string().min(1).max(200), region:z.enum(["cn","global"]), alwaysOn:z.boolean() });
-export const defaults = { model:"speech-2.8-hd", voice:"Chinese (Mandarin)_Warm_Girl", region:"cn" as const, alwaysOn:false };
+// Per reply: off = on demand only; synthesize = daemon renders it on arrival; play = also played on clients.
+export const modeSchema = z.enum(["off","synthesize","play"]);
+export type Mode = z.infer<typeof modeSchema>;
+export const modeOptions = [{label:"Off",value:"off"},{label:"Synthesize",value:"synthesize"},{label:"Play",value:"play"}] as const;
+export const chatsSchema = z.record(z.string(),modeSchema);
+export const modesSchema = z.object({ auto:modeSchema, chats:chatsSchema });
+export const settingsSchema = z.object({ model:z.string().min(1).max(100), voice:z.string().min(1).max(200), region:z.enum(["cn","global"]), auto:modeSchema });
+export const defaults = { model:"speech-2.8-hd", voice:"Chinese (Mandarin)_Warm_Girl", region:"cn" as const, auto:"off" as const };
 export const getSettings = defineRpc({ name:"settings.get", input:z.object({}), output:settingsSchema.extend({hasKey:z.boolean()}) });
 export const saveSettings = defineRpc({name:"settings.save",input:settingsSchema.extend({apiKey:z.string().max(4096).optional(),clearKey:z.boolean().optional()}),output:z.object({ok:z.boolean()})});
-export const recordSchema=z.object({id:z.string(),agentId:z.string(),title:z.string(),text:z.string(),createdAt:z.number()});
+export const getModes = defineRpc({name:"modes.get",input:z.object({}),output:modesSchema});
+export const setChatMode = defineRpc({name:"modes.set-chat",input:z.object({agentId:z.string().min(1).max(200),mode:modeSchema}),output:modesSchema});
+export const recordSchema=z.object({id:z.string(),agentId:z.string(),title:z.string(),text:z.string(),createdAt:z.number(),auto:modeSchema});
 export const listReplies=defineRpc({name:"replies.list",input:z.object({}),output:z.object({items:z.array(recordSchema)})});
 export const synthesize=defineRpc({name:"speech.synthesize",input:z.object({id:z.string()}),output:z.object({base64:z.string(),mimeType:z.literal("audio/mpeg")})});
-export const cancel=defineRpc({name:"speech.cancel",input:z.object({}),output:z.object({ok:z.boolean()})});
+export const speechStatus=defineRpc({name:"speech.status",input:z.object({id:z.string()}),output:z.object({state:z.enum(["idle","working","ready","expired"])})});
+export const cancel=defineRpc({name:"speech.cancel",input:z.object({id:z.string().optional()}),output:z.object({ok:z.boolean()})});
 export const speechKind="minimax-speech";
 export const speechRow=z.object({replyId:z.string()});
