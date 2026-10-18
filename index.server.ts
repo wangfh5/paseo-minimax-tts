@@ -1,6 +1,6 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { randomUUID } from "node:crypto";
-import { getSettings,saveSettings,listReplies,synthesize,cancel } from "./shared/tts";
+import { getSettings,saveSettings,listReplies,synthesize,cancel,speechKind } from "./shared/tts";
 import { loadSettings,persistSettings } from "./server/store";
 import { finalReply } from "./server/final";
 import { renderSpeech } from "./server/minimax";
@@ -23,10 +23,13 @@ export default function contribute(server:PluginServerContext){
   finally{clearTimeout(timer);active=undefined;}
  });
  // No history subscription or reconnect replay. Only lifecycle completion events.
- server.on("agent.turn_ended",event=>{
+ server.on("agent.turn_ended",async(event,{paseo})=>{
   const text=finalReply(event.timeline,event.outcome.kind);if(!text)return;
-  replies.push({id:randomUUID(),agentId:event.agent.id,title:event.agent.title||event.agent.id,text,createdAt:Date.now()});
+  const id=randomUUID();
+  replies.push({id,agentId:event.agent.id,title:event.agent.title||event.agent.id,text,createdAt:Date.now()});
   while(replies.length>20){cache.delete(replies.shift()!.id);}
+  // The inline player row; if the host cannot append, the reply stays playable from the sidebar list.
+  await paseo.agents.ref(event.agent.id).timeline.append({type:"plugin",id,kind:speechKind,version:1,data:{replyId:id}}).catch(error=>console.error("MiniMax timeline row failed",error));
  });
  return ()=>{active?.abort();cache.clear();replies.length=0;};
 }

@@ -8,3 +8,5 @@ export const recordSchema=z.object({id:z.string(),agentId:z.string(),title:z.str
 export const listReplies=defineRpc({name:"replies.list",input:z.object({}),output:z.object({items:z.array(recordSchema)})});
 export const synthesize=defineRpc({name:"speech.synthesize",input:z.object({id:z.string()}),output:z.object({base64:z.string(),mimeType:z.literal("audio/mpeg")})});
 export const cancel=defineRpc({name:"speech.cancel",input:z.object({}),output:z.object({ok:z.boolean()})});
+export const speechKind="minimax-speech";
+export const speechRow=z.object({replyId:z.string()});
