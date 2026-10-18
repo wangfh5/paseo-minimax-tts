@@ -5,7 +5,7 @@ import {runInNewContext} from "node:vm";
 import ts from "typescript";
 import {URL} from "node:url";
 // Runs client/auto.ts against a fake player, a fake RPC and a manual clock.
-function setup(initial:Array<{id:string;auto:string}>){
+function setup(initial:Array<{id:string;auto:string;agentId?:string}>){
  let now=0,seq=0;const timers=new Map<number,{at:number;fn:()=>void;every?:number}>();
  const flush=async()=>{for(let i=0;i<10;i++)await new Promise(resolve=>setImmediate(resolve));};
  const clock={
@@ -28,7 +28,7 @@ function setup(initial:Array<{id:string;auto:string}>){
  const source=ts.transpileModule(readFileSync(new URL("../client/auto.ts",import.meta.url),"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText;
  runInNewContext(source,{exports,require:(name:string)=>name==="./web"?web:{listReplies:{name:"list"},synthesize:{name:"synth"}},...clock});
  const stop=exports.startAutoplay(rpc);
- return {replies,plays,state,advance,flush,stop,hold:()=>{let release=()=>{};gate=new Promise<void>(resolve=>{release=()=>{gate=null;resolve();};});return release;}};
+ return {api:exports,replies,plays,state,advance,flush,stop,hold:()=>{let release=()=>{};gate=new Promise<void>(resolve=>{release=()=>{gate=null;resolve();};});return release;}};
 }
 test("auto-play queues new replies in order and waits for the current audio to finish",async()=>{
  const h=setup([{id:"old",auto:"play"}]);await h.flush();
@@ -48,4 +48,13 @@ test("audio the user starts while a queued reply is being fetched is not replace
  h.replies.unshift({id:"queued",auto:"play"});await h.advance(3000);assert.deepEqual(h.plays,[],"still waiting for the reply to be fetched");
  Object.assign(h.state,{id:"manual",ended:false,error:"",playing:true});release();await h.advance(3000);assert.deepEqual(h.plays,[],"the manual audio keeps playing");
  h.state.ended=true;await h.advance(1000);assert.deepEqual(h.plays,["queued"]);h.stop();
+});
+test("a chat that is gone loses its queued replies and clearing the queue drops the rest",async()=>{
+ const h=setup([]);await h.flush();
+ h.replies.unshift({id:"first",auto:"play",agentId:"a"});await h.advance(3000);assert.deepEqual(h.plays,["first"]);
+ h.replies.unshift({id:"c",auto:"play",agentId:"a"},{id:"b",auto:"play",agentId:"b"});await h.advance(3000);
+ h.api.dropQueued("a");h.state.ended=true;await h.advance(1000);assert.deepEqual(h.plays,["first","b"],"only the other chat's reply is left to play");
+ h.replies.unshift({id:"e",auto:"play",agentId:"b"},{id:"d",auto:"play",agentId:"b"});await h.advance(3000);
+ h.api.clearQueue();h.state.ended=true;await h.advance(5000);assert.deepEqual(h.plays,["first","b"],"stopping discards everything still queued");
+ h.stop();
 });

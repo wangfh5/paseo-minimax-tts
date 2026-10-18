@@ -22,7 +22,7 @@ export function SpeechRow({theme,agentId,item,rpc}:PluginTimelineItemProps<{repl
  const press=()=>{
   if(mine){void player.toggle().catch(()=>setFailure("Playback failed"));return;}
   setBusy(true);setFailure("");
-  rpc(synthesize,{id}).then(speech=>{setState("ready");return player.play(speech.base64,id);}).catch(e=>{setState("idle");setFailure(e.message);}).finally(()=>setBusy(false));
+  rpc(synthesize,{id}).then(speech=>{setState("ready");return player.play(speech.base64,id,agentId);}).catch(e=>{setState("idle");setFailure(e.message);}).finally(()=>setBusy(false));
  };
  const muted={color:c.foregroundMuted,fontSize:13};
  return <View style={{gap:6,paddingVertical:6}}>

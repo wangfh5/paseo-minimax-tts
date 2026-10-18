@@ -1,4 +1,4 @@
-MiniMax speech reads the last assistant message after a successful live turn completes. A player row appears under each completed reply in the chat: play, pause, and drag the progress bar to seek. Configure credentials from the plugin's menu under Settings, Plugins, then Settings.
+MiniMax speech reads the last assistant message after a successful live turn completes. A player row appears under each completed reply in the chat: play, pause, and drag the progress bar to seek. While audio is loaded, a row at the bottom of the sidebar shows the chat title with pause and stop buttons, and clicking it opens that chat. Archiving a chat stops its audio. Configure credentials from the plugin's menu under Settings, Plugins, then Settings.
 
 Requires Paseo 0.11.4 or newer. Desktop and web have seekable playback. Native iOS/Android playback is disabled because the public plugin audio API offers no seek control. Browser autoplay may require pressing Play.
 

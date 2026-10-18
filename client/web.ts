@@ -3,13 +3,13 @@ interface AudioFile {currentTime:number;duration:number;paused:boolean;ended:boo
 declare const Audio: new (src:string)=>AudioFile;
 let audio:AudioFile|undefined;
 const listeners=new Set<()=>void>();
-let state={id:"",position:0,duration:0,playing:false,ended:false,error:""};
+let state={id:"",agentId:"",position:0,duration:0,playing:false,ended:false,error:""};
 function notify(){for(const fn of listeners)fn();}
 export function subscribe(fn:()=>void){listeners.add(fn);return()=>{listeners.delete(fn);};}
 export function snapshot(){return state;}
 export function supported(){return Platform.OS==="web";}
-export function dispose(){if(!supported())return;if(audio){audio.ontimeupdate=audio.onloadedmetadata=audio.onended=audio.onerror=null;audio.pause();audio.src="";audio.load();audio=undefined;}state={id:"",position:0,duration:0,playing:false,ended:false,error:""};notify();}
-export async function play(base64:string,id=""){if(!supported())throw new Error("Seekable playback requires desktop or web");dispose();state={...state,id};audio=new Audio(`data:audio/mpeg;base64,${base64}`);const current=audio;
+export function dispose(){if(!supported())return;if(audio){audio.ontimeupdate=audio.onloadedmetadata=audio.onended=audio.onerror=null;audio.pause();audio.src="";audio.load();audio=undefined;}state={id:"",agentId:"",position:0,duration:0,playing:false,ended:false,error:""};notify();}
+export async function play(base64:string,id="",agentId=""){if(!supported())throw new Error("Seekable playback requires desktop or web");dispose();state={...state,id,agentId};audio=new Audio(`data:audio/mpeg;base64,${base64}`);const current=audio;
  const update=()=>{state={...state,position:current.currentTime,duration:Number.isFinite(current.duration)?current.duration:0,playing:!current.paused,ended:current.ended};notify();};
  current.ontimeupdate=update;current.onloadedmetadata=update;current.onended=update;current.onerror=()=>{state={...state,error:"Audio decode/playback failed"};notify();};
  try{await current.play();update();}catch{state={...state,error:"Autoplay blocked. Press Play to start playback."};notify();}
