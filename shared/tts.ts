@@ -1,0 +1,10 @@
+import { defineRpc } from "@getpaseo/plugin";
+import { z } from "zod";
+export const settingsSchema = z.object({ model:z.string().min(1).max(100), voice:z.string().min(1).max(200), region:z.enum(["cn","global"]), alwaysOn:z.boolean() });
+export const defaults = { model:"speech-2.8-hd", voice:"Chinese (Mandarin)_Warm_Girl", region:"cn" as const, alwaysOn:false };
+export const getSettings = defineRpc({ name:"settings.get", input:z.object({}), output:settingsSchema.extend({hasKey:z.boolean()}) });
+export const saveSettings = defineRpc({name:"settings.save",input:settingsSchema.extend({apiKey:z.string().max(4096).optional(),clearKey:z.boolean().optional()}),output:z.object({ok:z.boolean()})});
+export const recordSchema=z.object({id:z.string(),agentId:z.string(),title:z.string(),text:z.string(),createdAt:z.number()});
+export const listReplies=defineRpc({name:"replies.list",input:z.object({}),output:z.object({items:z.array(recordSchema)})});
+export const synthesize=defineRpc({name:"speech.synthesize",input:z.object({id:z.string()}),output:z.object({base64:z.string(),mimeType:z.literal("audio/mpeg")})});
+export const cancel=defineRpc({name:"speech.cancel",input:z.object({}),output:z.object({ok:z.boolean()})});

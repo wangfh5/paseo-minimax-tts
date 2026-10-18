@@ -1,0 +1,17 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { mkdtemp,stat,rm } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { finalReply } from "./final";
+import { loadSettings,persistSettings } from "./store";
+import { renderSpeech } from "./minimax";
+const user={type:"user_message" as const,text:"question"};
+const assistant=(text:string)=>({type:"assistant_message" as const,text});
+test("select only last response, never reasoning or intermediate updates",()=>{assert.equal(finalReply([user,assistant("Working"),{type:"reasoning",text:"private"},assistant("Final")],"completed"),"Final");});
+test("old history, failed and canceled turns do not speak",()=>{for(const outcome of ["failed","canceled"]){assert.equal(finalReply([user,assistant("partial")],outcome),null);}assert.equal(finalReply([user,assistant("old"),user],"completed"),null);assert.equal(finalReply([assistant("no user boundary")],"completed"),null);});
+test("tool-ending or reasoning-ending turn is not treated as final",()=>{assert.equal(finalReply([user,assistant("calling tool"),{type:"reasoning",text:"thinking"}],"completed"),null);assert.equal(finalReply([user,assistant(" ")],"completed"),null);});
+test("plugin rows cannot replace final response",()=>assert.equal(finalReply([user,assistant("done"),{type:"plugin",id:"x",pluginId:"test",kind:"a",version:1,data:{}}],"completed"),"done"));
+test("secure storage defaults and permissions",async()=>{const dir=await mkdtemp(join(tmpdir(),"minimax-test-"));try{const settings=await loadSettings(dir);assert.equal(settings.alwaysOn,false);assert.equal(settings.region,"cn");await persistSettings({...settings,apiKey:"FAKE-TEST-ONLY"},dir);assert.equal((await stat(join(dir,"settings.json"))).mode&0o777,0o600);assert.equal((await stat(dir)).mode&0o777,0o700);assert.equal((await loadSettings(dir)).apiKey,"FAKE-TEST-ONLY");}finally{await rm(dir,{recursive:true});}});
+test("mock MiniMax validates request and converts hex",async()=>{const settings={apiKey:"FAKE",region:"cn",model:"speech-2.8-hd",voice:"Chinese (Mandarin)_Warm_Girl"};const request:typeof fetch=async(url,init)=>{assert.equal(url,"https://api.minimaxi.com/v1/t2a_v2");const body=JSON.parse(String(init?.body));assert.equal(body.stream,false);assert.equal(body.voice_setting.voice_id,settings.voice);return new Response(JSON.stringify({base_resp:{status_code:0},data:{audio:"494433"}}));};const result=await renderSpeech("Hello",settings,new AbortController().signal,request);assert.equal(result.base64,"SUQz");});
+test("length/key guards make zero API calls",async()=>{const request:typeof fetch=async()=>{throw new Error("UNEXPECTED NETWORK");};const s={apiKey:"FAKE",region:"global",model:"m",voice:"v"};await assert.rejects(renderSpeech("x".repeat(8001),s,new AbortController().signal,request),/8000/);await assert.rejects(renderSpeech("hi",{...s,apiKey:""},new AbortController().signal,request),/API key/);});

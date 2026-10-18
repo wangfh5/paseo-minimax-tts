@@ -1,0 +1,12 @@
+node_modules/
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+coverage/
+dist/
+settings.json
+settings.tmp
+*.mp3
+*.wav

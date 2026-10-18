@@ -1,0 +1,8 @@
+{
+  "id": "paseo-minimax-tts",
+  "name": "MiniMax speech",
+  "media": [],
+  "requirements": {
+    "paseo": ">=0.11.4"
+  }
+}
