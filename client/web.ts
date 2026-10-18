@@ -12,7 +12,7 @@ export function dispose(){if(!supported())return;if(audio){audio.pause();audio.s
 export async function play(base64:string){if(!supported())throw new Error("Seekable playback requires desktop or web");dispose();audio=new Audio(`data:audio/mpeg;base64,${base64}`);const current=audio;
  const update=()=>{state={position:current.currentTime,duration:Number.isFinite(current.duration)?current.duration:0,playing:!current.paused,error:state.error};notify();};
  current.ontimeupdate=update;current.onloadedmetadata=update;current.onended=update;current.onerror=()=>{state={...state,error:"Audio decode/playback failed"};notify();};
- try{await current.play();update();}catch{state={...state,error:"Autoplay blocked. Press Resume to start playback."};notify();}
+ try{await current.play();update();}catch{state={...state,error:"Autoplay blocked. Press Play to start playback."};notify();}
 }
 export async function toggle(){if(!supported()||!audio)return;if(audio.paused){await audio.play();}else audio.pause();state={...state,playing:!audio.paused,error:""};notify();}
 export function seek(ratio:number){if(!supported()||!audio||!Number.isFinite(audio.duration))return;audio.currentTime=Math.max(0,Math.min(1,ratio))*audio.duration;state={...state,position:audio.currentTime};notify();}

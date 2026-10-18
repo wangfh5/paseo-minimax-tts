@@ -1,6 +1,6 @@
 MiniMax speech reads the last assistant message after a successful live turn completes. Open MiniMax speech in the sidebar to configure credentials, play replies, pause, and drag the progress bar to seek.
 
-Requires Paseo 0.11.4 or newer. Desktop and web have seekable playback. Native iOS/Android playback is disabled because the public plugin audio API offers no seek control. Browser autoplay may require pressing Resume.
+Requires Paseo 0.11.4 or newer. Desktop and web have seekable playback. Native iOS/Android playback is disabled because the public plugin audio API offers no seek control. Browser autoplay may require pressing Play.
 
 The API key is sent to the daemon and stored in ~/.paseo-minimax-tts/settings.json (0600, directory 0700), never returned by a settings RPC. Model, voice, China/global region and Always On are editable. Defaults are speech-2.8-hd, Chinese (Mandarin)_Warm_Girl, China, and Always On off. Selected reply text is sent to MiniMax and billed to your account.
 
