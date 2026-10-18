@@ -47,12 +47,21 @@ export function mp3Frames(buf:Buffer){
  }
  return buf.subarray(start,end);
 }
+// A reply split into several parts can keep finished parts here, so a retry after a failure does not pay for them again.
+type PartStore={get(part:string):Promise<string|null>;put(part:string,base64:string):Promise<void>};
 // No length limit: long text is synthesized in sequential parts and the MP3 streams are joined in order.
-export async function renderSpeech(text:string, settings:Voice,signal:AbortSignal,request:typeof fetch=fetch){
+export async function renderSpeech(text:string, settings:Voice,signal:AbortSignal,request:typeof fetch=fetch,store?:PartStore){
  if(!settings.apiKey) throw new Error("Save a MiniMax API key in settings first");
  const parts=splitText(text);
  if(!parts.length) throw new Error("Reply has no text to synthesize");
  const audio:Buffer[]=[];
- for(const part of parts){if(signal.aborted)throw new Error("Synthesis canceled");audio.push(await renderChunk(part,settings,signal,request));}
+ for(const part of parts){
+  if(signal.aborted)throw new Error("Synthesis canceled");
+  const known=parts.length>1?await store?.get(part):null;
+  if(known){audio.push(Buffer.from(known,"base64"));continue;}
+  const fresh=await renderChunk(part,settings,signal,request);
+  if(parts.length>1)await store?.put(part,fresh.toString("base64"));
+  audio.push(fresh);
+ }
  return {base64:Buffer.concat(audio.length>1?audio.map(mp3Frames):audio).toString("base64"),mimeType:"audio/mpeg" as const};
 }

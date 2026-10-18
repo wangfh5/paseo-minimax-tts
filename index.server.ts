@@ -1,18 +1,20 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-import { getSettings,saveSettings,getModes,setChatMode,listReplies,synthesize,speechStatus,cancel,speechKind,type Mode } from "./shared/tts";
+import { getSettings,saveSettings,getModes,setChatMode,listReplies,synthesize,speechStatus,cancel,getCacheStats,clearCache,speechKind,type Mode } from "./shared/tts";
 import { loadSettings,persistSettings,storageDir } from "./server/store";
 import { audioCache } from "./server/cache";
 import { finalReply } from "./server/final";
-import { renderSpeech } from "./server/minimax";
+import { renderSpeech,splitText } from "./server/minimax";
 type Settings=Awaited<ReturnType<typeof loadSettings>>;
 type Speech=Awaited<ReturnType<typeof renderSpeech>>;
 export default function contribute(server:PluginServerContext){
  const replies:Array<{id:string;agentId:string;title:string;text:string;createdAt:number;auto:Mode}>=[];
  // Audio survives reloads and restarts; the key includes model and voice so changing them never replays old audio.
- const cache=audioCache(join(storageDir,"audio"),512*1024*1024);
+ const cache=audioCache(join(storageDir,"audio"));
  const cacheKey=({model,voice}:Settings,id:string)=>`${model}\0${voice}\0${id}`;
+ const partKey=({model,voice}:Settings,part:string)=>`${model}\0${voice}\0part\0${part}`;
+ const cacheBytes=({cacheMb}:Settings)=>cacheMb*1024*1024;
  const jobs=new Map<string,{done:Promise<Speech>;controller:AbortController}>();
  let saving:Promise<unknown>=Promise.resolve();
  const change=(edit:(old:Settings)=>Settings)=>{const run=saving.catch(()=>{}).then(async()=>{const next=edit(await loadSettings());await persistSettings(next);return next;});saving=run;return run;};
@@ -26,14 +28,19 @@ export default function contribute(server:PluginServerContext){
    const settings=await loadSettings(),key=cacheKey(settings,id),hit=await cache.get(key);
    if(hit)return {base64:hit,mimeType:"audio/mpeg" as const};
    const reply=replies.find(x=>x.id===id);if(!reply)throw new Error("Reply expired or unavailable; only live completed turns are collected");
-   const audio=await renderSpeech(reply.text,settings,controller.signal);
+   const limit=cacheBytes(settings);
+   const audio=await renderSpeech(reply.text,settings,controller.signal,fetch,{get:part=>cache.get(partKey(settings,part)),put:(part,base64)=>cache.put(partKey(settings,part),base64,limit)});
    if(controller.signal.aborted)throw new Error("Synthesis canceled");
-   await cache.put(key,audio.base64);return audio;
+   await cache.put(key,audio.base64,limit);
+   for(const part of splitText(reply.text))await cache.remove(partKey(settings,part));
+   return audio;
   })().catch(error=>{throw controller.signal.aborted?new Error("Synthesis canceled"):error;}).finally(()=>{jobs.delete(id);});
   jobs.set(id,{done,controller});return done;
  };
  server.handle(getSettings,async()=>{const {apiKey,chats,...publicSettings}=await loadSettings();return {...publicSettings,hasKey:!!apiKey};});
- server.handle(saveSettings,async input=>{const {apiKey,clearKey,...settings}=input;stop();await change(old=>({...old,...settings,apiKey:clearKey?"":apiKey?.trim()||old.apiKey}));return {ok:true};});
+ server.handle(saveSettings,async input=>{const {apiKey,clearKey,...settings}=input;stop();const next=await change(old=>({...old,...settings,apiKey:clearKey?"":apiKey?.trim()||old.apiKey}));await cache.trim(cacheBytes(next));return {ok:true};});
+ server.handle(getCacheStats,()=>cache.stats());
+ server.handle(clearCache,()=>cache.clear());
  server.handle(getModes,async()=>modes(await loadSettings()));
  server.handle(setChatMode,async({agentId,mode})=>modes(await change(old=>{return {...old,chats:{...old.chats,[agentId]:mode}};})));
  server.handle(listReplies,()=>({items:[...replies].reverse()}));
