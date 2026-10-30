@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { getSettings,saveSettings,getModes,setChatMode,listReplies,synthesize,speechStatus,cancel,getCacheStats,clearCache,speechKind,type Mode } from "./shared/tts";
 import { loadSettings,persistSettings,storageDir } from "./server/store";
 import { audioCache } from "./server/cache";
-import { finalReply } from "./server/final";
+import { turnReply } from "./server/final";
 import { renderSpeech,splitText } from "./server/minimax";
 type Settings=Awaited<ReturnType<typeof loadSettings>>;
 type Speech=Awaited<ReturnType<typeof renderSpeech>>;
@@ -49,7 +49,7 @@ export default function contribute(server:PluginServerContext){
  server.handle(speechStatus,async({id})=>({state:await cache.has(cacheKey(await loadSettings(),id))?"ready" as const:jobs.has(id)?"working" as const:replies.some(x=>x.id===id)?"idle" as const:"expired" as const}));
  // No history subscription or reconnect replay. Only lifecycle completion events.
  server.on("agent.turn_ended",async(event,{paseo})=>{
-  const text=finalReply(event.timeline,event.outcome.kind);if(!text)return;
+  const text=await turnReply(paseo.agents.ref(event.agent.id).timeline,event.outcome.kind,event.turnId);if(!text)return;
   const settings=await loadSettings().catch(()=>null);
   const id=randomUUID(),auto:Mode=settings?settings.chats[event.agent.id]??settings.auto:"off";
   replies.push({id,agentId:event.agent.id,title:event.agent.title||event.agent.id,text,createdAt:Date.now(),auto});
