@@ -1,7 +1,19 @@
 {
   "id": "paseo-minimax-tts",
   "name": "MiniMax speech",
-  "media": [],
+  "description": "Reads the final reply of each agent turn aloud with MiniMax text-to-speech.",
+  "translations": {
+    "zh-CN": {
+      "name": "MiniMax 语音",
+      "description": "用 MiniMax 语音合成朗读每轮 agent 的最终回复。"
+    }
+  },
+  "media": [
+    "docs/images/inline-player.png",
+    "docs/images/chat-auto.png",
+    "docs/images/now-playing.png",
+    "docs/images/settings.png"
+  ],
   "requirements": {
     "paseo": ">=0.11.4"
   }

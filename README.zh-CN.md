@@ -38,7 +38,7 @@
 插件是可信、非沙箱代码。先审查源码，并在目标 daemon 中允许插件，然后：
 
 ```sh
-paseo plugin install github:wangfh5/paseo-minimax-tts
+paseo plugin add git:wangfh5/paseo-minimax-tts
 paseo plugin ls
 ```
 
@@ -48,7 +48,7 @@ paseo plugin ls
 npm ci
 npm run typecheck
 npm test
-paseo plugin install /absolute/path/to/paseo-minimax-tts
+paseo plugin add /absolute/path/to/paseo-minimax-tts
 ```
 
 源码更新后运行 `paseo plugin reload paseo-minimax-tts`，不需要重启 daemon。

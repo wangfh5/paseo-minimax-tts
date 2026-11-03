@@ -42,7 +42,7 @@ Screenshots captured from the Paseo web app on macOS, cropped to the plugin cont
 Plugins are trusted, unsandboxed code. Review the source and make sure plugins are enabled on your daemon, then:
 
 ```sh
-paseo plugin install github:wangfh5/paseo-minimax-tts
+paseo plugin add git:wangfh5/paseo-minimax-tts
 paseo plugin ls
 ```
 
@@ -52,7 +52,7 @@ Update with `paseo plugin update paseo-minimax-tts`. To work on a local checkout
 npm ci
 npm run typecheck
 npm test
-paseo plugin install /absolute/path/to/paseo-minimax-tts
+paseo plugin add /absolute/path/to/paseo-minimax-tts
 ```
 
 After editing the source, run `paseo plugin reload paseo-minimax-tts`. There is no need to restart the daemon.
