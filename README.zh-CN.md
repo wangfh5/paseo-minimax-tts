@@ -38,7 +38,7 @@
 插件是可信、非沙箱代码。先审查源码，并在目标 daemon 中允许插件，然后：
 
 ```sh
-paseo plugin add git:wangfh5/paseo-minimax-tts
+paseo plugin add wangfh5/minimax-tts
 paseo plugin ls
 ```
 

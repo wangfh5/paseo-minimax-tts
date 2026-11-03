@@ -42,7 +42,7 @@ Screenshots captured from the Paseo web app on macOS, cropped to the plugin cont
 Plugins are trusted, unsandboxed code. Review the source and make sure plugins are enabled on your daemon, then:
 
 ```sh
-paseo plugin add git:wangfh5/paseo-minimax-tts
+paseo plugin add wangfh5/minimax-tts
 paseo plugin ls
 ```
 
