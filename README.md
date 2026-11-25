@@ -29,6 +29,7 @@ Screenshots captured from the Paseo web app on macOS, cropped to the plugin cont
 - **Settings page** for the API key, China or global region, model and voice.
 - **Automatic speech, three modes, off by default.** `Off` speaks only when you press Play. `Synthesize` makes the daemon generate speech as soon as a reply completes and cache it, so Play is instant. `Play` also plays it automatically. Set a global default, or override it for a single chat with the **Auto** control in that chat's player row.
 - **Row status:** `Read aloud` (synthesized when you press Play), `Synthesizing…`, `Ready` (cached, plays instantly) or `Expired` (the reply is no longer in memory and cannot be played again).
+- **Speech-friendly text cleanup.** Before synthesis, Markdown formatting, links, bare URLs, long file paths, inline LaTeX math, and long hashes/UUIDs are simplified so replies do not read entire directory trees or URLs aloud.
 - **Any length.** Long replies are split at paragraph and sentence boundaries, synthesized part by part and joined into one file. Finished parts are cached, so a retry after a failure only pays for the remaining parts.
 - **Disk cache with a size limit** that you set and can clear from the settings page.
 - Only the last assistant message after a successful turn is read. Tool calls, reasoning and intermediate assistant messages are never joined into it.
@@ -102,7 +103,7 @@ npx tsx server/rpc-check.ts ws://127.0.0.1:6767/ws
 npx tsx server/rpc-check.ts ws://127.0.0.1:6767/ws --synthesize-latest
 ```
 
-The tests cover final message selection, settings storage and migration, mocked MiniMax requests, text splitting and MP3 joining, the disk cache (limits, eviction, concurrency), the auto-play queue, player state and seeking, and native isolation. The synthesis command above does not play any sound, but warn people before you test playback so other connected devices do not start speaking unexpectedly.
+The tests cover final message selection, settings storage and migration, speech text cleanup, mocked MiniMax requests, text splitting and MP3 joining, the disk cache (limits, eviction, concurrency), the auto-play queue, player state and seeking, and native isolation. The synthesis command above does not play any sound, but warn people before you test playback so other connected devices do not start speaking unexpectedly.
 
 Layout: `client/` is the UI and player, `server/` holds credential storage, reply selection, the cache and MiniMax requests, and `shared/` has the RPC contracts. `OVERVIEW.md` is the plugin page shown inside Paseo.
 

@@ -5,7 +5,7 @@ import { getSettings,saveSettings,getModes,setChatMode,listReplies,synthesize,sp
 import { loadSettings,persistSettings,storageDir } from "./server/store";
 import { audioCache } from "./server/cache";
 import { turnReply } from "./server/final";
-import { renderSpeech,splitText } from "./server/minimax";
+import { renderSpeech,speechParts } from "./server/minimax";
 type Settings=Awaited<ReturnType<typeof loadSettings>>;
 type Speech=Awaited<ReturnType<typeof renderSpeech>>;
 export default function contribute(server:PluginServerContext){
@@ -32,7 +32,7 @@ export default function contribute(server:PluginServerContext){
    const audio=await renderSpeech(reply.text,settings,controller.signal,fetch,{get:part=>cache.get(partKey(settings,part)),put:(part,base64)=>cache.put(partKey(settings,part),base64,limit)});
    if(controller.signal.aborted)throw new Error("Synthesis canceled");
    await cache.put(key,audio.base64,limit);
-   for(const part of splitText(reply.text))await cache.remove(partKey(settings,part));
+   for(const part of speechParts(reply.text))await cache.remove(partKey(settings,part));
    return audio;
   })().catch(error=>{throw controller.signal.aborted?new Error("Synthesis canceled"):error;}).finally(()=>{jobs.delete(id);});
   jobs.set(id,{done,controller});return done;
