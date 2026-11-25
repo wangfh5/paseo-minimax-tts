@@ -1,3 +1,4 @@
+import { prepareSpeechText } from "./clean";
 type Voice={apiKey:string;region:string;model:string;voice:string};
 // MiniMax accepts under 10,000 characters per request; keep each request small enough that its response stays well under the size guard.
 const chunkChars=2000;
@@ -13,6 +14,9 @@ export function splitText(text:string,limit=chunkChars){
  }
  if(rest)parts.push(rest);
  return parts.filter(Boolean);
+}
+export function speechParts(text:string,limit=chunkChars){
+ return splitText(prepareSpeechText(text),limit);
 }
 async function renderChunk(text:string,settings:Voice,signal:AbortSignal,request:typeof fetch){
  // Each request gets its own 60 second allowance, so long replies are not cut off by a total deadline.
@@ -52,7 +56,7 @@ type PartStore={get(part:string):Promise<string|null>;put(part:string,base64:str
 // No length limit: long text is synthesized in sequential parts and the MP3 streams are joined in order.
 export async function renderSpeech(text:string, settings:Voice,signal:AbortSignal,request:typeof fetch=fetch,store?:PartStore){
  if(!settings.apiKey) throw new Error("Save a MiniMax API key in settings first");
- const parts=splitText(text);
+ const parts=speechParts(text);
  if(!parts.length) throw new Error("Reply has no text to synthesize");
  const audio:Buffer[]=[];
  for(const part of parts){
