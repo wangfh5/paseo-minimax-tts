@@ -4,6 +4,6 @@ Setup needs a MiniMax API key; speech is billed to your MiniMax account. Open th
 
 Automatic speech is off by default. **Synthesize** generates audio as soon as a reply finishes, so Play starts instantly, and is billed even if you never listen. **Play** also plays new replies in order while Paseo is open. Set a default in settings, or change it for one chat from the Auto control in its player row.
 
-Only the daemon talks to MiniMax, sending the reply's text. The key is stored in `~/.paseo-minimax-tts/settings.json`, readable only by your user and never sent back to the app. Generated audio is cached in `~/.paseo-minimax-tts/audio` (512 MB by default), so replaying a reply is not billed again.
+Only the daemon talks to MiniMax, sending the reply's text. Before sending, it shortens long file paths and URLs to their last meaningful name and strips Markdown and LaTeX markup, so they are not read out character by character. The key is stored in `~/.paseo-minimax-tts/settings.json`, readable only by your user and never sent back to the app. Generated audio is cached in `~/.paseo-minimax-tts/audio` (512 MB by default), so replaying a reply is not billed again.
 
 Playback works on desktop and web, not in the native iOS or Android apps. Player rows live in daemon memory and disappear when the daemon restarts. If an agent splits its answer into several messages, only the last one is read.

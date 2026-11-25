@@ -1,7 +1,7 @@
 {
   "name": "paseo-minimax-tts",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Paseo plugin that reads the final reply of each agent turn aloud with MiniMax text-to-speech",
   "license": "MIT",
   "author": "Fohong Wang (https://github.com/wangfh5)",

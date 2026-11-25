@@ -4,6 +4,6 @@ MiniMax 语音用 MiniMax 语音合成朗读 agent 的最终回复。每条完�
 
 自动朗读默认关闭。**Synthesize** 会在回复完成后立即生成音频，按播放即可直接开始，即使不听也会计费。**Play** 还会在 Paseo 打开时按顺序自动播放新回复。可以在设置里设默认值，也可以在某个聊天播放行的 Auto 控件里单独修改。
 
-只有 daemon 会与 MiniMax 通信，发送的是回复文本。key 保存在 `~/.paseo-minimax-tts/settings.json`，只有你的用户可读，且不会回传给应用。生成的音频缓存在 `~/.paseo-minimax-tts/audio`（默认上限 512 MB），重放同一条回复不会再次计费。
+只有 daemon 会与 MiniMax 通信，发送的是回复文本。发送前会把长文件路径和 URL 缩短为末尾有意义的名称，并去掉 Markdown 和 LaTeX 标记，避免逐字符朗读。key 保存在 `~/.paseo-minimax-tts/settings.json`，只有你的用户可读，且不会回传给应用。生成的音频缓存在 `~/.paseo-minimax-tts/audio`（默认上限 512 MB），重放同一条回复不会再次计费。
 
 播放支持桌面端和网页端，不支持原生 iOS 和 Android 应用。播放行保存在 daemon 内存中，daemon 重启后会消失。如果 agent 把答案拆成多条消息，只会朗读最后一条。
